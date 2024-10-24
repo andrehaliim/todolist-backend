@@ -35,16 +35,18 @@ return [
         'validation_rules' => [
           'user_id' => 'required|numeric|exists:users,id',
           'title' => 'required|string',
-          'text' => 'required|string'
-        ]
-      ],
-  
-      'todolist_update' => [
-        'validation_rules' => [
-          'title' => 'required|string',
-          'text' => 'required|string'
-        ]
-      ]
-  
+          'text' => 'required|string',
 
+          'alarm' => 'nullable|array',
+          'datetime' => 'nullable|date_format:Y-m-d H:i:s',
+          'status' => ['nullable', 'string', 'max:20', Rule::in(['active', 'inactive'])],
+        ]
+    ],
+  
+      'alarm_create' => [
+        'validation_rules' => [
+            'datetime' => 'nullable|date_format:Y-m-d H:i:s',
+            'status' => ['nullable', 'string', 'max:20', Rule::in(['active', 'inactive'])],
+          ]
+    ],
 ];

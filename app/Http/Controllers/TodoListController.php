@@ -8,9 +8,12 @@ use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\TodoListRequest;
 use App\Http\Requests\TodoListUpdateRequest;
+use App\Models\Alarm;
 use App\Models\TodoList;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TodoListController extends Controller
 {
@@ -31,30 +34,45 @@ class TodoListController extends Controller
     {
         $user = User::find(Auth::id());
         
-        DB::statement(DB::raw('set @rownum=0'));
-        $query = TodoList::selectRaw('todolist.*')->where('todolist.user_id', $user->id);
-
-        $qb = QueryBuilder::for($query)->allowedSorts(
-            [
-            ])
-            ->allowedFilters(
-            [
-            ])->distinct();
-
-        
-        $data = $qb->get();
+        $query = TodoList::selectRaw('todolist.*')->where('todolist.user_id', $user->id);        
+        $data = $query->get();
 
         return response()->json($this->createResponse(['data' => $data]), 200);
     }
 
     public function store(TodoListRequest $request)
+{
+    try
     {
-        $rules_array = collect(Config::get('boilerplate.todolist_create.validation_rules'));
-        $rule_keys = $rules_array->keys()->toArray();
+        $todolistData = $request->only(['user_id', 'title', 'text']);
+        $todolist = TodoList::create($todolistData);
 
-        $data = TodoList::create($request->only($rule_keys));
-        return response()->json($this->createResponse(['data' => $data->id]), 200);
-    }
+        if ($request->has('alarm')) 
+        {
+            $alarm_data = $request->input('alarm');
+
+            $alarms = array_map(function ($arr) use ($todolist) 
+            {
+                return [
+                    'datetime' => $arr['datetime'],
+                    'status' => $arr['status'],
+                    'user_id' => $todolist->user_id,
+                    'todolist_id' => $todolist->id,
+                ];
+            }, $alarm_data);
+
+            $todolist->todolist_alarm()->createMany($alarms);
+        }
+
+        return response()->json($this->createResponse(['data' => $todolist->id]), 200);    
+    } 
+    catch(Exception $e)
+    {
+        Log::error($e->getMessage());
+        return response()->json(['message' => 'Failed to create todolist'], 404);
+    } 
+}
+
 
     public function update(TodoListUpdateRequest $request, $id)
     {
